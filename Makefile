@@ -7,7 +7,7 @@
 include $(TOPDIR)/rules.mk
 
 PKG_NAME:=mosdns
-PKG_VERSION:=1.2.0
+PKG_VERSION:=1.3.2
 PKG_RELEASE:=1
 
 ifeq ($(ARCH),mipsel)
@@ -28,7 +28,7 @@ endif
 
 PKG_LICENSE:=Apache-2.0
 PKG_BUILD_DIR:=$(BUILD_DIR)/mosdns-$(PKG_VERSION)
-PKG_URL:=https://github.com/IrineSistiana/mosdns/releases/download/v$(PKG_VERSION)/mosdns-linux-$(MOSDNS_ARCH).zip
+PKG_URL:=https://github.com/IrineSistiana/mosdns.git
 PKG_FILE:=mosdns-linux-$(MOSDNS_ARCH)-$(PKG_VERSION).zip
 
 include $(INCLUDE_DIR)/package.mk
@@ -45,21 +45,18 @@ define Package/$(PKG_NAME)/description
 mosdns is a "programmable" DNS forwarder.
 endef
 
-define Build/Download
-	if [ ! -f $(DL_DIR)/$(PKG_FILE) ] ; then \
-		wget -c -t 5 -O $(DL_DIR)/$(PKG_FILE) $(PKG_URL); \
-	fi
-endef
 
 define Build/Prepare
-	$(Build/Download)
-	unzip $(DL_DIR)/$(PKG_FILE) -d $(PKG_BUILD_DIR)
+	rm -rf $(PKG_BUILD_DIR)
+	git clone -b v$(PKG_VERSION) $(PKG_URL) $(PKG_BUILD_DIR) 
 endef
 
 define Build/Configure
 endef
 
 define Build/Compile
+	cd $(PKG_BUILD_DIR) && CGO_ENABLED=0 GOOS=linux GOARCH=$(MOSDNS_ARCH) go build -ldflags "-s -w -X main.version=$(PKG_VERSION)" -trimpath -o mosdns
+	$(STAGING_DIR_HOST)/bin/upx --lzma --best $(PKG_BUILD_DIR)/mosdns
 endef
 
 define Package/$(PKG_NAME)/install
@@ -70,5 +67,4 @@ define Package/$(PKG_NAME)/install
 	$(INSTALL_DIR) $(1)/etc/mosdns
 	$(INSTALL_DATA) ./files/mosdns/* $(1)/etc/mosdns/
 endef
-
 $(eval $(call BuildPackage,$(PKG_NAME)))
